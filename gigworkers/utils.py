@@ -12,7 +12,12 @@ import traceback
 import os
 from rest_framework import status
 from datetime import timedelta
+from rest_framework.pagination import LimitOffsetPagination
 from .models import *
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+from dotenv import load_dotenv
+load_dotenv()
 import logging
 logger = logging.getLogger('gig_app')
 
@@ -154,3 +159,28 @@ def store_otp(identifier, otp):
     else:
         raise ValueError("Invalid identifier. Must be a valid email or mobile number.")
     return otp_record
+
+
+########################----------------------------Email Sender
+def send_email(subject, message, recipient_list):
+    from_email="reachus@agrisarathi.com"
+    try:
+        message=Mail(
+            subject=subject,
+            plain_text_content=message,
+            from_email=from_email,
+            to_emails=[recipient_list],
+        )
+        sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+        response = sg.send(message)
+        print(response.status_code)
+        print(response.body)
+        print(response.headers)
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        
+        
+##################----------------------Serializers---------------------------########
+class CurrentNewsPagination(LimitOffsetPagination):
+    default_limit = 20 
+    max_limit = 100  

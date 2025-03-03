@@ -1,7 +1,7 @@
 from django.db import models
 from .managers import *
 from django.utils import timezone
-
+from admin.models import *
 #------------------------------EMPLOYERR MODELS
 class Employeer(models.Model):
     name = models.CharField(max_length=100,null=True, blank=True)
@@ -32,7 +32,7 @@ class Employee(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_deleted = models.BooleanField(default=False)
 
-
+####---------------------Employee Verifications
 class EmployeeVerification(models.Model):
     employee = models.OneToOneField(Employee, on_delete=models.CASCADE,null=True,blank=True, related_name='verification')
     pan_number = models.CharField(max_length=10, unique=True, null=True, blank=True)
@@ -79,3 +79,25 @@ class SalaryDetails(models.Model):
 
     def __str__(self):
         return f"Salary for {self.employee.name} - {self.salary_amount}"
+###############################----------------EWA Requests   
+class EWARequest(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+        ("disbursed", "Disbursed"),
+    ]
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="ewa_requests")
+    amount_requested = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    requested_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    processed_by = models.ForeignKey('admin.LoanAdmin', on_delete=models.SET_NULL, null=True, blank=True, related_name="processed_ewa_requests")
+
+    def __str__(self):
+        return f"{self.employee.name} - {self.amount_requested} ({self.status})"
+    
+    def is_request_pending(self):
+        """Check if an existing EWA request is still pending or approved but not disbursed."""
+        return EWARequest.objects.filter(employee=self.employee, status__in=["pending", "approved"]).exists()

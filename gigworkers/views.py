@@ -104,7 +104,6 @@ class VerifyOTP(APIView):
 ###################3---------------------------------Employee LOGIN
 class EmployeeLogin(APIView):
     permission_classes = [AllowAny]
-
     def post(self, request, format=None):
         employee_id = request.data.get("employee_id")
         mobile = request.data.get("mobile")
@@ -221,3 +220,31 @@ class GetEwaBalance(APIView):
             return Response({'message':'success', 'salary_details':earned_wages},status=status.HTTP_200_OK)
         except Exception as e:
             return handle_exception(e,"An error occurred while fetching EWA balance")
+        
+######################-------------------------Request EWA Balance by Employee
+class RequestEwaBalance(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, format=None):
+        user = request.user
+        provided_access_token = request.META.get('HTTP_AUTHORIZATION', '').split(' ')[-1]
+
+        if user.access_token!= provided_access_token:
+            return Response({'error': 'Access token is invalid or has been replaced.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if user.user_type!= "gigaff":
+            return Response({'error': 'Only Giugs can view Request'}, status=status.HTTP_403_FORBIDDEN)
+        amount_requested = request.data.get("amount_requested", 0)
+        try:
+            employee=get_object_or_404(Employee,user=user)
+            salary_details = get_object_or_404(SalaryDetails, employee=employee)
+            if EWARequest.objects.filter(employee=employee, status__in=["pending", "approved", "disbursed"]).exists():
+                return Response({"error": "An active EWA request already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if amount_requested <= 0:
+                return Response({"error": "Invalid request amount"}, status=status.HTTP_400_BAD_REQUEST)
+            if amount_requested > salary_details.ewa_limit:
+                return Response({"error": "Requested amount exceeds available earned wages"}, status=status.HTTP_400_BAD_REQUEST)
+            ewa_request = EWARequest.objects.create(employee=employee, amount_requested=amount_requested)
+            return Response({"message": "EWA request submitted successfully", "request_id": ewa_request.id}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return handle_exception(e,"An error occurred while requesting EWA Balance")
