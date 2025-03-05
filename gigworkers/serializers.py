@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .managers import *
 from .models import *
+from employer.models import *
 
 
 class EmployeeRegistrationSerializer(serializers.ModelSerializer):
@@ -28,7 +29,7 @@ class EmployeeRegistrationSerializer(serializers.ModelSerializer):
         )
 
         if self.user_type == 'gigaff':
-            Employee.objects.create(user=user, mobile=user.mobile,employee_id=employee_id,name=name)
+            GigEmployee.objects.create(user=user, mobile=user.mobile,employee_id=employee_id,name=name)
         else:
             raise ValueError("Invalid user type")
 
@@ -41,3 +42,11 @@ class EmployeeVerificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeVerification
         fields = ['pan_number', 'aadhar_number', 'selfie', 'video_kyc', 'is_verified']
+
+##################------------------Employeer List---------------------##############
+class EmployeerListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employeer
+        fields = ['id', 'name','company_profile']
+
+##################------------------Employee List---------------------##############

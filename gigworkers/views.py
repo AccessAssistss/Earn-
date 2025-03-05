@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404
 from .models import *
 from .utils import *
 from .serializers import *
+from employer.models import *
 from django.conf import settings
 # Create your views here.
 TEST_MOBILE = 1239956739
@@ -33,7 +34,7 @@ class UserSendOTP(APIView):
 
         try:
                 user = CustomUser.objects.filter(mobile=mobile, user_type=user_type).first()
-                is_existing_user = Employee.objects.filter(user=user).exists() if user else False
+                is_existing_user = GigEmployee.objects.filter(user=user).exists() if user else False
                 if user:
                     sendmobile_otp(mobile, otp)
                     store_otp(mobile, otp)
@@ -70,7 +71,7 @@ class VerifyOTP(APIView):
             print(f"Test user verified with static OTP {STATIC_OTP}")
 
             user, created = CustomUser.objects.get_or_create(mobile=TEST_MOBILE, defaults={"user_type": user_type})
-            is_existing_user = Employee.objects.filter(user=user).exists()
+            is_existing_user = GigEmployee.objects.filter(user=user).exists()
             
             return Response({
                 "message": "Test user OTP verified successfully", 
@@ -84,7 +85,7 @@ class VerifyOTP(APIView):
             
             # Check if user exists and is an onboarded employee
             user = CustomUser.objects.filter(mobile=mobile, user_type=user_type).first()
-            is_existing_user = Employee.objects.filter(user=user).exists() if user else False
+            is_existing_user = GigEmployee.objects.filter(user=user).exists() if user else False
             otp_record.delete()
             
             # If user exists and is onboarded, generate token immediately
@@ -140,6 +141,20 @@ class EmployeeLogin(APIView):
                 }, status=200)
         except Exception as e:
             return handle_exception(e,"An error occurred while logging in")
+        
+###############-------------------------List ALL Employeers------------------
+class EmployeesList(APIView):
+    permission_classes = [AllowAny]
+    def get(self,request,format=None):
+        search=request.query_params.get("search")
+        try:
+            employer=Employeer.objects.filter(is_deleted=False)
+            if search:
+                employer=employer.filter(name__icontains=search)
+            serializers=EmployeerListSerializer(employer,many=True)
+            return Response(serializers.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return handle_exception(e,"An error occurred while listing employers")
             
 ###########################-------------------------------Employee Verification
 class EmployeeVerification(APIView):
@@ -155,7 +170,7 @@ class EmployeeVerification(APIView):
         if user.user_type!= "gigaff":
             return Response({'error': 'Only Giugs can view Request'}, status=status.HTTP_403_FORBIDDEN)
         try:
-            employee=get_object_or_404(Employee,user=user)
+            employee=get_object_or_404(GigEmployee,user=user)
             verification, created = EmployeeVerification.objects.get_or_create(employee=employee)
 
             serializer = EmployeeVerificationSerializer(verification, data=request.data, partial=True)
@@ -211,7 +226,7 @@ class GetEwaBalance(APIView):
         if not employee_id:
             return Response({"error": "Employee ID is required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            employee=get_object_or_404(Employee,user=user,employee_id=employee_id)
+            employee=get_object_or_404(GigEmployee,user=user,employee_id=employee_id)
             salary_details = SalaryDetails.objects.filter(employee=employee).first()
 
             if not salary_details or salary_details.employment_status != "active":
@@ -235,7 +250,7 @@ class RequestEwaBalance(APIView):
             return Response({'error': 'Only Giugs can view Request'}, status=status.HTTP_403_FORBIDDEN)
         amount_requested = request.data.get("amount_requested", 0)
         try:
-            employee=get_object_or_404(Employee,user=user)
+            employee=get_object_or_404(GigEmployee,user=user)
             salary_details = get_object_or_404(SalaryDetails, employee=employee)
             if EWARequest.objects.filter(employee=employee, status__in=["pending", "approved", "disbursed"]).exists():
                 return Response({"error": "An active EWA request already exists."}, status=status.HTTP_400_BAD_REQUEST)

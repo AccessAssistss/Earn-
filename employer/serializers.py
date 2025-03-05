@@ -1,15 +1,14 @@
+
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken,TokenError
-from gigworkers.managers import *
+from gigworkers.managers import CustomUser
 from .models import *
-from gigworkers.models import *
-
-######----------------------Admin Reigistration
-class AdminRegistrationSerializer(serializers.Serializer):
+################-------------------------Employeer Registration
+class EmployerRegistrationSerializer(serializers.Serializer):
     mobile = serializers.CharField()
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
-    user_type = serializers.ChoiceField(choices=['admin'])
+    user_type = serializers.ChoiceField(choices=['employer'])
     name = serializers.CharField(required=False)
 
     def create(self, validated_data):
@@ -22,10 +21,10 @@ class AdminRegistrationSerializer(serializers.Serializer):
             name=name,
             email=validated_data['email']
         )
-        if user_type == 'admin':
+        if user_type == 'vendor':
             if not name:
-                raise serializers.ValidationError({"name": "Name is required for Admin users."})
-            LoanAdmin.objects.create(user=user, mobile=user.mobile,name=name,password=user.password,
+                raise serializers.ValidationError({"name": "Name is required for Vendor users."})
+            Employeer.objects.create(user=user, mobile=user.mobile,name=name,password=user.password,
                                     email=user.email)
         else:
             user.delete()  
@@ -41,19 +40,19 @@ class AdminRegistrationSerializer(serializers.Serializer):
         name = data.get('name')
         print(f"Validating {user_type} Validation Name: {name}")
 
-        if user_type in ['admin'] and not name:
+        if user_type in ['employer'] and not name:
             raise serializers.ValidationError({"name": f"Name is required for {user_type.upper()} users."})
 
         return data
-    
-class AdminLoginSerializer(serializers.Serializer):
+######################---------------------Employeer Login----------------------------
+class EmployerLoginSerializer(serializers.Serializer):
     email = serializers.CharField()
     password = serializers.CharField(write_only=True)
-    user_type = serializers.ChoiceField(choices=['admin'])
-    
-    
-#########################--------------------------EWA Request Serializers-------------------------########
-class EWARequestSerializer(serializers.ModelSerializer):
+    user_type = serializers.ChoiceField(choices=['employer'])
+
+######------------------------Employerr Details
+class EmployerDetailsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = EWARequest
+        model = Employeer
         fields = '__all__'
+      
